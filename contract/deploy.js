@@ -17,11 +17,11 @@ const deploy = async () => {
     {
       data:'0x'+compileOutput.bytecode,
       arguments:[
-      '0x906706e2C7e9B5eb075cc7fA0941384608642E4E',
-      '0x8a3352D4e2C28704689061eF7B7912F3210DdC20',
-      '0x1c8F6fBe05FBD7ff72a187537Fb287F3EEd2e328',
-      '0x068A4CeDe4461F8207eA0F066C94F805E4ef1aaa',
-      '0xbab24640f8538BE2b9C704a3ab930C40b3856f3C',
+        accounts[0],
+        accounts[1],
+        accounts[2],
+        accounts[3],
+        accounts[4],
       '0x7465737400000000000000000000000000000000000000000000000000000000'
       ]
     }
