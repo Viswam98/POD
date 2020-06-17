@@ -1,8 +1,10 @@
 import React,{Component} from 'react';
 import Seller from './Seller'
 import Buyer from './Buyer'
+import Select from './Select'
+import { Route, Switch, NavLink } from "react-router-dom";
 import Transporter from './Transporter'
-import SelectUserForm from './SelectUserForm'
+// import SelectUserForm from './SelectUserForm'
 import web3 from './web3.js'
 import POD from './POD'
 import './App.css';
@@ -92,51 +94,57 @@ class App extends Component{
   }
 
   render(){
-    let displayUser;
-    if(this.state.user === 'Seller'){
-      displayUser = <Seller
-        address={this.state.seller}
-        state={this.state.contractStates[this.state.contractStateIndex]}
-        price={this.state.itemPrice}
-        SignTermsAndConditions={this.SignTermsAndConditions}
-        index={this.state.contractStateIndex}
-        reRender={this.reRender}
-
-      />
-    }else if (this.state.user === 'Buyer') {
-      displayUser = <Buyer
-        address={this.state.buyer}
-        state={this.state.contractStates[this.state.contractStateIndex]}
-        price={this.state.itemPrice}
-        SignTermsAndConditions={this.SignTermsAndConditions}
-        index={this.state.contractStateIndex}
-        reRender={this.reRender}
-      />
-    }else if (this.state.user === 'Transporter') {
-      displayUser = <Transporter
-        address={this.state.transporter}
-        state={this.state.contractStates[this.state.contractStateIndex]}
-        price={this.state.itemPrice}
-        SignTermsAndConditions={this.SignTermsAndConditions}
-        index={this.state.contractStateIndex}
-        reRender={this.reRender}
-      />
-    }else{
-      displayUser=null
-    }
 
     return(
-      <div className="App">
-      {displayUser === null ? <SelectUserForm selectUser={this.selectUser}/> : displayUser}
 
+      <div className='App'>
 
+        <Switch>
+          <Route exact path='/' render={() =>
+            <Select/>}
+          />
+
+          <Route exact path='/buyer' render={() =>
+            <Buyer
+              address={this.state.buyer}
+              state={this.state.contractStates[this.state.contractStateIndex]}
+              price={this.state.itemPrice}
+              SignTermsAndConditions={this.SignTermsAndConditions}
+              index={this.state.contractStateIndex}
+              reRender={this.reRender}
+            />}
+          />
+
+          <Route exact path='/seller' render={() =>
+            <Seller
+               address={this.state.seller}
+               state={this.state.contractStates[this.state.contractStateIndex]}
+               price={this.state.itemPrice}
+               SignTermsAndConditions={this.SignTermsAndConditions}
+               index={this.state.contractStateIndex}
+               reRender={this.reRender}
+            />}
+          />
+
+          <Route exact path='/transporter' render={() =>
+            <Transporter
+              address={this.state.transporter}
+              state={this.state.contractStates[this.state.contractStateIndex]}
+              price={this.state.itemPrice}
+              SignTermsAndConditions={this.SignTermsAndConditions}
+              index={this.state.contractStateIndex}
+              reRender={this.reRender}
+            />}
+          />
+        </Switch>
       </div>
+
+
 
     )
   }
 }
 
-// byte32 = 0x7465737400000000000000000000000000000000000000000000000000000000
-//1000000000000000000000000000000000000000000000000000000000000000000000000
+
 
 export default App;

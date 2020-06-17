@@ -12,7 +12,7 @@ contract POD {
     uint private keyBr;
 
     uint public itemPrice;
-    bytes32 itemID;
+    string itemID;
 
     string public TermsIPFS_Hash; // Terms and conditions agreement IPFS Hash
 
@@ -26,7 +26,7 @@ contract POD {
     contractState public state;
 
     mapping(address => bytes32) public verificationHash;
-    mapping(address => bool) cancellable;
+    mapping(address => bool) public cancellable;
 
     uint deliveryDuration;
     uint startEntryTransporterKeysBlocktime;
@@ -38,7 +38,7 @@ contract POD {
     address _transporter,
     address _arbitrator,
     address _attestationAuthority,
-    bytes32 _itemID) public payable {
+    string _itemID) public payable {
         seller = _seller;
         buyer = _buyer;
         transporter = _transporter;
@@ -48,13 +48,10 @@ contract POD {
         itemPrice = 0.001 ether;
         itemID = _itemID;
         deliveryDuration = 2 hours; // 2 hours
-        buyerVerificationTimeWindow = 15 minutes; // Time for the buyer to verify keys after transporter entered the keys
+        buyerVerificationTimeWindow = 2 minutes; // Time for the buyer to verify keys after transporter entered the keys
         TermsIPFS_Hash = "QmWWQSuPMS6aXCbZKpEjPHPUZN2NjB3YrhJTHsV4X3vb2td";
 
         state = contractState.waitingForVerificationbySeller;
-        cancellable[seller] = true;
-        cancellable[buyer] = true;
-        cancellable[transporter] = true;
     }
 
     modifier costs() {
@@ -84,14 +81,14 @@ contract POD {
 
     event TermsAndConditionsSignedBy(string info, address entityAddress);
     event collateralWithdrawnSuccessfully(string info, address entityAddress);
-    event PackageCreatedBySeller(string info, address entityAddress, uint key);
+    event PackageCreatedBySeller(string info, address entityAddress);
     event PackageIsOnTheWay(string info, address entityAddress);
-    event PackageKeyGivenToBuyer(string info, address entityAddress, uint key);
+    event PackageKeyGivenToBuyer(string info, address entityAddress);
     event ArrivedToDestination(string info, address entityAddress);
     event BuyerEnteredVerificationKeys(string info, address entityAddress);
     event SuccessfulVerification(string info);
     event VerificationFailure(string info);
-    event CancellationReuest(address entityAddress, string info, string reason);
+    event CancellationRequest(address entityAddress, string info, string reason);
     event RefundDueToCancellation(string info);
     event DeliveryTimeExceeded(string info);
     event EtherTransferredToArbitrator(string info, address entityAddress);
@@ -115,6 +112,9 @@ contract POD {
             emit TermsAndConditionsSignedBy("Terms and Conditiond verified : ", msg.sender);
             emit collateralWithdrawnSuccessfully("Double deposit is withdrawn successfully from: ", msg.sender);
             state = contractState.MoneyWithdrawn;
+            cancellable[seller] = true;
+            cancellable[buyer] = true;
+            cancellable[transporter] = true;
         }
     }
 
@@ -171,6 +171,7 @@ contract POD {
         require(block.timestamp > startEntryTransporterKeysBlocktime + buyerVerificationTimeWindow &&
         state == contractState.ArrivedToDestination);
         emit BuyerExceededVerificationTime("Dispute: Buyer Exceeded Verification Time", msg.sender);
+        state = contractState.buyerKeysEntered;
         verification();
     }
 
@@ -186,7 +187,6 @@ contract POD {
         state = contractState.EtherWithArbitrator;
         emit EtherTransferredToArbitrator("Due to exceeding delivery time and refund request by receiver , all Ether deposits have been transferred to arbitrator ", arbitrator);
         state = contractState.Aborted;
-        selfdestruct(msg.sender);
     }
 
     function verification() internal {
@@ -206,9 +206,19 @@ contract POD {
             state = contractState.EtherWithArbitrator;
             emit EtherTransferredToArbitrator("Due to dispute all Ether deposits have been transferred to arbitrator ", arbitrator);
             state = contractState.Aborted;
-            selfdestruct(msg.sender);
         }
     }
+
+    function cancelTransaction(string reason)public OnlySeller_Buyer_Transporter{
+     require(cancellable[msg.sender] == true);
+     state = contractState.CancellationRefund;
+     //everyone gets a refund
+     seller.transfer(2*itemPrice);
+     buyer.transfer(2*itemPrice);
+     transporter.transfer(2*itemPrice);
+     emit CancellationRequest(msg.sender, " has requested a cancellation due to: ", reason );
+     state = contractState.Aborted;
+ }
 
     function returnKey() public view returns(uint){
         if(msg.sender == transporter || msg.sender == seller){
@@ -217,6 +227,14 @@ contract POD {
         else if(msg.sender == buyer){
             return keyBr;
         }
+    }
+    function isRefundable() public view OnlyBuyer returns(bool){
+      return (block.timestamp > startdeliveryBlocktime+deliveryDuration &&
+      (state == contractState.ItemOnTheWay || state == contractState.PackageKeyGivenToBuyer));
+    }
+    function isBuyerExceededTime() public view OnlyTransporter returns(bool){
+      return (block.timestamp > startEntryTransporterKeysBlocktime + buyerVerificationTimeWindow &&
+      state == contractState.ArrivedToDestination);
     }
 
 }

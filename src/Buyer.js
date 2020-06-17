@@ -10,15 +10,19 @@ class Buyer extends Component {
       signed:false,
       key:'0',
       showKey:false,
-      transporterKey:'0'
+      transporterKey:'0',
+      cancellable: false,
+      reason:'r',
+      isRefundable:false
     }
-    
     this.sign = this.sign.bind(this)
     this.handleChange = this.handleChange.bind(this)
     this.update = this.update.bind(this)
     this.tick= this.tick.bind(this)
     this.requestPackageKey= this.requestPackageKey.bind(this)
     this.verifyKeyBuyer= this.verifyKeyBuyer.bind(this)
+    this.cancelTransaction= this.cancelTransaction.bind(this)
+    this.refund= this.refund.bind(this)
   }
 
   handleChange(evt) {
@@ -47,6 +51,18 @@ class Buyer extends Component {
     })
   }
 
+  async cancelTransaction(){
+    await POD.methods.cancelTransaction(this.state.reason).send({
+      from: this.props.address
+    })
+  }
+
+  async refund(){
+    await POD.methods.refund().send({
+      from: this.props.address
+    })
+  }
+
   async tick() {
     console.log("tick",this.props.index)
     if(this.props.index !== await POD.methods.state().call()){
@@ -58,6 +74,21 @@ class Buyer extends Component {
     if(this.state.key !== keyb){
       this.setState({
         key: keyb
+      })
+    }
+    let cancellable = await POD.methods.cancellable(this.props.address).call()
+    if(this.state.cancellable != cancellable){
+      this.setState({
+        cancellable: cancellable
+      })
+    }
+    let isRefundable = await POD.methods.isRefundable().call({
+      from: this.props.address
+    })
+    console.log(isRefundable)
+    if(this.state.isRefundable != isRefundable){
+      this.setState({
+        isRefundable: isRefundable
       })
     }
   }
@@ -81,39 +112,57 @@ class Buyer extends Component {
         <h3>Adderss: {this.props.address}</h3>
         <h3>State: {this.props.state}</h3>
 
-        {this.props.state==='waitingForVerificationbyBuyer' ? <button onClick={this.sign}>Sign terms and conditions</button>:null}
-        {this.props.state==='ItemOnTheWay' ? <button onClick={this.requestPackageKey}>Request Package Key</button>:null}
+        {this.props.state!=='Aborted' && this.props.state !=='PaymentSettledSuccess' ?
+          <div>
+            {this.props.state==='waitingForVerificationbyBuyer' ? <button onClick={this.sign}>Sign terms and conditions</button>:null}
+            {this.props.state==='ItemOnTheWay' ? <button onClick={this.requestPackageKey}>Request Package Key</button>:null}
 
-        {this.state.key !== '0' ?
-          (
-            this.state.showKey ?
-            <div>
-              <h3>Your Key: {this.state.key}</h3>
-              <button onClick={() => {this.setState({showKey: !this.state.showKey})}}>Hide Key</button>
+            {this.state.key !== '0' ?
+              (
+                this.state.showKey ?
+                <div>
+                  <h3>Your Key: {this.state.key}</h3>
+                  <button onClick={() => {this.setState({showKey: !this.state.showKey})}}>Hide Key</button>
+                </div>
+                :<button onClick={() => {this.setState({showKey: !this.state.showKey})}}>Show Key</button>
+              )
+              :null}
+
+              {this.props.state === "ArrivedToDestination"  ?
+                <form onSubmit={this.verifyKeyBuyer}>
+                  <label htmlFor='key'>Enter Transporter key: </label>
+                    <input
+                      type='text'
+                      name='transporterKey'
+                      value={this.state.transporterKey}
+                      onChange={this.handleChange}
+                      id='transporterKey'
+                    />
+                  {this.state.transporterKey !== '0' && this.state.transporterKey !== '' ? <button>Submit</button> : null}
+                </form>
+              : null}
+
+              {(this.props.state==='ItemOnTheWay' || this.props.state==='PackageKeyGivenToBuyer') && this.state.isRefundable ?
+                <div>
+                  <label htmlFor='refund'>Transporter exceeded time: </label>
+                    <button
+                      name='refund'
+                      onClick={this.refund}
+                      id='refund'
+                    >Refund</button>
+                </div>
+              :null}
+
+              {this.state.cancellable ?
+                <button onClick={this.cancelTransaction}>Cancel Order</button>
+              :null}
             </div>
-            :<button onClick={() => {this.setState({showKey: !this.state.showKey})}}>Show Key</button>
-          )
           :null}
-
-          {this.props.state === "ArrivedToDestination"  ?
-            <form onSubmit={this.verifyKeyBuyer}>
-              <label htmlFor='key'>Enter Transporter key: </label>
-                <input
-                  type='text'
-                  name='transporterKey'
-                  value={this.state.transporterKey}
-                  onChange={this.handleChange}
-                  id='transporterKey'
-                />
-              {this.state.transporterKey !== '0' && this.state.transporterKey !== '' ? <button>Submit</button> : null}
-            </form>
-          : null}
-
       </div>
 
     )
   }
 }
-// {(this.props.state==='waitingForVerificationbySeller' && !this.props.buyClicked) ? <button onClick={this.buy}>Buy</button>:null}
+
 
 export default Buyer;
